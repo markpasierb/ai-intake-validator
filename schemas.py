@@ -14,6 +14,7 @@ class IntakeResult(BaseModel):
     policy_number: str | None = None
     date_of_loss: str | None = None
     description: str | None = None
+    potential_preexisting_issue: bool
 
     missing_fields: list[str]
 

@@ -24,6 +24,7 @@ class IntakeRecord(Base):
 
     missing_fields = Column(Text)
 
+    potential_preexisting_issue = Column(Boolean)
     requires_review = Column(Boolean)
 
     confidence = Column(Float)

@@ -45,6 +45,9 @@ def apply_business_rules(result: IntakeResult) -> IntakeResult:
     if result.severity == "high":
         result.requires_review = True
 
+    if result.potential_preexisting_issue:
+        result.requires_review = True
+
     if missing_fields:
         result.requires_review = True
 
@@ -56,7 +59,7 @@ def apply_business_rules(result: IntakeResult) -> IntakeResult:
 @app.post("/intake", response_model=IntakeResult)
 def intake(request: IntakeRequest):
     response = client.responses.parse(
-        model="gpt-4.1-mini",
+        model="gpt-5.4-mini",
         input=[
             {
                 "role": "system",
