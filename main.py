@@ -135,3 +135,30 @@ def get_intakes():
         ]
     finally:
         db.close()
+
+@app.get("/intakes/review")
+def get_review_intakes():
+    db = SessionLocal()
+
+    try:
+        records = (
+            db.query(IntakeRecord)
+            .filter(IntakeRecord.requires_review == True)
+            .all()
+        )
+
+        return [
+            {
+                "id": record.id,
+                "claim_type": record.claim_type,
+                "severity": record.severity,
+                "policy_number": record.policy_number,
+                "date_of_loss": record.date_of_loss,
+                "description": record.description,
+                "missing_fields": record.missing_fields.split(",") if record.missing_fields else [],
+                "confidence": record.confidence,
+            }
+            for record in records
+        ]
+    finally:
+        db.close()
