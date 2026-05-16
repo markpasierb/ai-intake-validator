@@ -37,10 +37,13 @@ python -m uvicorn main:app --reload
   "claim_type": "roof_damage",
   "severity": "high",
   "missing_fields": ["policy_number"],
-  "requires_review": true
+  "requires_review": true,
+  "potential_preexisting_issue": false
 }
 ```
 
 ## Architecture Notes
 
 The application separates AI-based information extraction from deterministic business logic. OpenAI models are used to extract structured fields from unstructured intake text, while validation and review-escalation rules are enforced within application code.
+
+Added detection of pre-existing issues
