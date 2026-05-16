@@ -10,6 +10,9 @@ from database import SessionLocal
 from database import engine
 
 from models import IntakeRecord
+from schemas import IntakeRequest
+from schemas import IntakeResult
+from schemas import IntakeRecordResponse
 
 load_dotenv()
 
@@ -24,22 +27,6 @@ REQUIRED_FIELDS = {
     "description",
 }
 
-class IntakeRequest(BaseModel):
-    text: str
-
-
-class IntakeResult(BaseModel):
-    claim_type: str
-    severity: Literal["low", "medium", "high"]
-
-    policy_number: str | None = None
-    date_of_loss: str | None = None
-    description: str | None = None
-
-    missing_fields: list[str]
-
-    requires_review: bool
-    confidence: float = Field(ge=0, le=1)
 
 @app.get("/health")
 def health():
