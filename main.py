@@ -2,6 +2,7 @@ from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi import File, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
@@ -100,6 +101,15 @@ def intake(request: IntakeRequest):
     db.close()
 
     return validated
+
+@app.post("/intake/file", response_model=IntakeResult)
+async def intake_file(file: UploadFile = File(...)):
+    contents = await file.read()
+    text = contents.decode("utf-8")
+
+    request = IntakeRequest(text=text)
+
+    return intake(request)
 
 @app.get("/intakes")
 def get_intakes():
