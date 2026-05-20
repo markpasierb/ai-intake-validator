@@ -3,6 +3,7 @@ from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi import File, UploadFile
+from fastapi import HTTPException
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
@@ -13,6 +14,7 @@ from database import engine
 from models import IntakeRecord
 from schemas import IntakeRequest
 from schemas import IntakeResult
+from schemas import ReviewUpdate
 from schemas import IntakeRecordResponse
 
 load_dotenv()
@@ -104,6 +106,8 @@ def intake(request: IntakeRequest):
 
 @app.post("/intake/file", response_model=IntakeResult)
 async def intake_file(file: UploadFile = File(...)):
+    if not file.filename.endswith(".txt"):
+        raise HTTPException(status_code=400, detail="Only .txt files are supported")
     contents = await file.read()
     text = contents.decode("utf-8")
 
@@ -130,6 +134,9 @@ def get_intakes():
                 "missing_fields": record.missing_fields.split(",") if record.missing_fields else [],
                 "requires_review": record.requires_review,
                 "confidence": record.confidence,
+                "potential_preexisting_issue": record.potential_preexisting_issue,
+                "reviewed": record.reviewed,
+                "reviewer_notes": record.reviewer_notes,
             }
             for record in records
         ]
@@ -144,6 +151,7 @@ def get_review_intakes():
         records = (
             db.query(IntakeRecord)
             .filter(IntakeRecord.requires_review == True)
+            .filter(IntakeRecord.reviewed == False)
             .all()
         )
 
@@ -157,8 +165,40 @@ def get_review_intakes():
                 "description": record.description,
                 "missing_fields": record.missing_fields.split(",") if record.missing_fields else [],
                 "confidence": record.confidence,
+                "reviewed": record.reviewed,
+                "reviewer_notes": record.reviewer_notes,
             }
             for record in records
         ]
+    finally:
+        db.close()
+
+
+@app.patch("/intakes/{intake_id}/review")
+def update_intake_review(intake_id: int, review: ReviewUpdate):
+    db = SessionLocal()
+
+    try:
+        record = (
+            db.query(IntakeRecord)
+            .filter(IntakeRecord.id == intake_id)
+            .first()
+        )
+
+        if record is None:
+            raise HTTPException(status_code=404, detail="Intake not found")
+
+        record.reviewed = review.reviewed
+        record.reviewer_notes = review.reviewer_notes
+
+        db.commit()
+        db.refresh(record)
+
+        return {
+            "id": record.id,
+            "reviewed": record.reviewed,
+            "reviewer_notes": record.reviewer_notes,
+            "requires_review": record.requires_review,
+        }
     finally:
         db.close()

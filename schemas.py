@@ -25,3 +25,7 @@ class IntakeResult(BaseModel):
 class IntakeRecordResponse(IntakeResult):
     id: int
     raw_text: str
+
+class ReviewUpdate(BaseModel):
+        reviewed: bool
+        reviewer_notes: str | None = None

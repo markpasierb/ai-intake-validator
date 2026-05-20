@@ -28,3 +28,6 @@ class IntakeRecord(Base):
     requires_review = Column(Boolean)
 
     confidence = Column(Float)
+
+    reviewed = Column(Boolean, default=False)
+    reviewer_notes = Column(Text, nullable=True)
