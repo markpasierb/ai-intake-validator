@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi import File, UploadFile
 from fastapi import HTTPException
 from openai import OpenAI
-from pydantic import BaseModel, Field
+
+from pypdf import PdfReader
+from io import BytesIO
 
 from database import Base
 from database import SessionLocal
@@ -106,14 +108,30 @@ def intake(request: IntakeRequest):
 
 @app.post("/intake/file", response_model=IntakeResult)
 async def intake_file(file: UploadFile = File(...)):
-    if not file.filename.endswith(".txt"):
-        raise HTTPException(status_code=400, detail="Only .txt files are supported")
     contents = await file.read()
-    text = contents.decode("utf-8")
+
+    if file.filename.endswith(".txt"):
+        text = contents.decode("utf-8")
+
+    elif file.filename.endswith(".pdf"):
+        text = extract_text_from_pdf(contents)
+
+        if not text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="No readable text found in PDF. Scanned/image PDFs are not supported yet.",
+            )
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .txt and .pdf files are supported",
+        )
 
     request = IntakeRequest(text=text)
 
     return intake(request)
+
 
 @app.get("/intakes")
 def get_intakes():
@@ -202,3 +220,17 @@ def update_intake_review(intake_id: int, review: ReviewUpdate):
         }
     finally:
         db.close()
+
+
+def extract_text_from_pdf(contents: bytes) -> str:
+    reader = PdfReader(BytesIO(contents))
+
+    pages_text = []
+
+    for page in reader.pages:
+        text = page.extract_text()
+
+        if text:
+            pages_text.append(text)
+
+    return "\n".join(pages_text)
