@@ -2,3 +2,5 @@ venv/
 __pycache__/
 .env
 intakes.db
+ts-client/node_modules/
+ts-client/dist/
