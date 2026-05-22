@@ -21,7 +21,7 @@ AI-powered intake validation service built with FastAPI and OpenAI.
 ## Running Locally
 
 ```bash
-python -m uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 ## Example Request
