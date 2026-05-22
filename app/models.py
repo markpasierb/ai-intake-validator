@@ -5,7 +5,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
 
-from database import Base
+from app.database import Base
 
 
 class IntakeRecord(Base):

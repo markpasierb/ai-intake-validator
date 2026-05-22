@@ -1,30 +1,15 @@
-from typing import Literal
-
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi import File, UploadFile
 from fastapi import HTTPException
-from openai import OpenAI
+from app.schemas import IntakeResult
+from app.models import IntakeRecord
+from app.schemas import IntakeRequest
+from app.schemas import ReviewUpdate
+from app.database import SessionLocal
 
+from fastapi import File, UploadFile
 from pypdf import PdfReader
 from io import BytesIO
 
-from database import Base
-from database import SessionLocal
-from database import engine
-
-from models import IntakeRecord
-from schemas import IntakeRequest
-from schemas import IntakeResult
-from schemas import ReviewUpdate
-from schemas import IntakeRecordResponse
-
-load_dotenv()
-
-client = OpenAI()
-app = FastAPI()
-
-Base.metadata.create_all(bind=engine)
+from openai import OpenAI
 
 REQUIRED_FIELDS = {
     "policy_number",
@@ -32,8 +17,8 @@ REQUIRED_FIELDS = {
     "description",
 }
 
+client = OpenAI()
 
-@app.get("/health")
 def health():
     return {"status": "ok"}
 
@@ -61,7 +46,6 @@ def apply_business_rules(result: IntakeResult) -> IntakeResult:
 
     return result
 
-@app.post("/intake", response_model=IntakeResult)
 def intake(request: IntakeRequest):
     response = client.responses.parse(
         model="gpt-5.4-mini",
@@ -95,6 +79,7 @@ def intake(request: IntakeRequest):
         date_of_loss=validated.date_of_loss,
         description=validated.description,
         missing_fields=",".join(validated.missing_fields),
+        potential_preexisting_issue=validated.potential_preexisting_issue,
         requires_review=validated.requires_review,
         confidence=validated.confidence,
     )
@@ -106,7 +91,6 @@ def intake(request: IntakeRequest):
 
     return validated
 
-@app.post("/intake/file", response_model=IntakeResult)
 async def intake_file(file: UploadFile = File(...)):
     contents = await file.read()
 
@@ -132,8 +116,6 @@ async def intake_file(file: UploadFile = File(...)):
 
     return intake(request)
 
-
-@app.get("/intakes")
 def get_intakes():
     db = SessionLocal()
 
@@ -161,7 +143,6 @@ def get_intakes():
     finally:
         db.close()
 
-@app.get("/intakes/review")
 def get_review_intakes():
     db = SessionLocal()
 
@@ -191,8 +172,6 @@ def get_review_intakes():
     finally:
         db.close()
 
-
-@app.patch("/intakes/{intake_id}/review")
 def update_intake_review(intake_id: int, review: ReviewUpdate):
     db = SessionLocal()
 
@@ -220,7 +199,6 @@ def update_intake_review(intake_id: int, review: ReviewUpdate):
         }
     finally:
         db.close()
-
 
 def extract_text_from_pdf(contents: bytes) -> str:
     reader = PdfReader(BytesIO(contents))
