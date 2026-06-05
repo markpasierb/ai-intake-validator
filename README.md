@@ -1,6 +1,6 @@
 # AI Intake Validator
 
-AI-powered intake validation service built with FastAPI and OpenAI.
+AI-powered intake validation service built with FastAPI and OpenAI.  
 Insurance intake data is often incomplete, inconsistent, and unstructured. This project demonstrates an architecture that uses LLMs for extraction while retaining deterministic business validation and review workflows.
 ## Features
 
