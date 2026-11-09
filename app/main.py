@@ -1,10 +1,11 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from uuid import UUID, uuid4
 
 from app.database import Base, engine
-from app.schemas import IntakeRequest, IntakeResult, ReviewUpdate
+from app.schemas import IntakeRequest, IntakeResult, ReviewUpdate, IntakeSubmissionResult
 
 from app.services.intake_service import (
     health,
@@ -25,10 +26,26 @@ def health_route():
     return health()
 
 
-@app.post("/intake", response_model=IntakeResult)
-def intake_route(request: IntakeRequest):
-    return intake(request)
+@app.post("/intake", response_model=IntakeSubmissionResult)
+def intake_route(
+    request: IntakeRequest,
+    x_correlation_id: str | None = Header(default=None),
+):
+    if x_correlation_id is None:
+        correlation_id = str(uuid4())
+    else:
+        try:
+            correlation_id = str(UUID(x_correlation_id))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="X-Correlation-ID must be a valid UUID",
+            )
 
+    return intake(
+        request=request,
+        correlation_id=correlation_id,
+    )
 
 @app.post("/intake/file", response_model=IntakeResult)
 async def intake_file_route(file: UploadFile = File(...)):

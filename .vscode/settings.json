@@ -1,0 +1,6 @@
+{
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.automationProfile.windows": {
+    "path": "powershell.exe"
+  }
+}

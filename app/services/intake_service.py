@@ -1,7 +1,9 @@
 from fastapi import HTTPException
-from app.schemas import IntakeResult
-from app.models import IntakeRecord
+from app.models import IntakeRecord, OutboxEvent
+from app.events.intake_events import IntakeSubmitted
 from app.schemas import IntakeRequest
+from app.schemas import IntakeResult
+from app.schemas import IntakeSubmissionResult
 from app.schemas import ReviewUpdate
 from app.database import SessionLocal
 
@@ -46,7 +48,8 @@ def apply_business_rules(result: IntakeResult) -> IntakeResult:
 
     return result
 
-def intake(request: IntakeRequest):
+
+def validate_intake_text(text: str) -> IntakeResult:
     response = client.responses.parse(
         model="gpt-5.4-mini",
         input=[
@@ -54,42 +57,77 @@ def intake(request: IntakeRequest):
                 "role": "system",
                 "content": (
                     "You extract structured insurance intake information. "
-                    "Extract claim_type, severity, policy_number, date_of_loss, description, and confidence. "
+                    "Extract claim_type, severity, policy_number, date_of_loss, "
+                    "description, and confidence. "
                     "Use null for missing values. "
                     "Do not invent information."
-                )
+                ),
             },
             {
                 "role": "user",
-                "content": request.text,
+                "content": text,
             },
         ],
         text_format=IntakeResult,
     )
-    extracted = response.output_parsed
-    validated = apply_business_rules(extracted)
 
+    extracted = response.output_parsed
+
+    return apply_business_rules(extracted)
+
+
+def intake(
+    request: IntakeRequest,
+    correlation_id: str,
+) -> IntakeSubmissionResult:
     db = SessionLocal()
 
-    record = IntakeRecord(
-        raw_text=request.text,
-        claim_type=validated.claim_type,
-        severity=validated.severity,
-        policy_number=validated.policy_number,
-        date_of_loss=validated.date_of_loss,
-        description=validated.description,
-        missing_fields=",".join(validated.missing_fields),
-        potential_preexisting_issue=validated.potential_preexisting_issue,
-        requires_review=validated.requires_review,
-        confidence=validated.confidence,
+    try:
+        record = IntakeRecord(
+            raw_text=request.text,
+            correlation_id=correlation_id,
+            status="SUBMITTED",
+        )
+
+        db.add(record)
+        db.flush()
+
+        intake_id = record.id
+
+        event = IntakeSubmitted(
+            aggregate_id=intake_id,
+            correlation_id=correlation_id,
+        )
+
+        outbox_event = OutboxEvent(
+            event_id=event.event_id,
+            event_type=event.event_type,
+            event_version=event.event_version,
+            aggregate_type=event.aggregate_type,
+            aggregate_id=event.aggregate_id,
+            correlation_id=event.correlation_id,
+            causation_id=event.causation_id,
+            occurred_at=event.occurred_at,
+            payload=event.payload,
+        )
+
+        db.add(outbox_event)
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
+
+    return IntakeSubmissionResult(
+        intake_id=intake_id,
+        status="SUBMITTED",
+        correlation_id=correlation_id,
     )
 
-    db.add(record)
-    db.commit()
-
-    db.close()
-
-    return validated
 
 async def intake_file(file: UploadFile = File(...)):
     contents = await file.read()

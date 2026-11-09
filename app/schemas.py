@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field
 class IntakeRequest(BaseModel):
     text: str
 
+class IntakeSubmissionResult(BaseModel):
+    intake_id: int
+    status: str
+    correlation_id: str
 
 class IntakeResult(BaseModel):
     claim_type: str
@@ -29,3 +33,8 @@ class IntakeRecordResponse(IntakeResult):
 class ReviewUpdate(BaseModel):
         reviewed: bool
         reviewer_notes: str | None = None
+
+class IntakeSubmissionResult(BaseModel):
+    intake_id: int
+    status: str
+    correlation_id: str
